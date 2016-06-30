@@ -16,19 +16,32 @@ External links:
 
 * [Beta-binomial distribution on Wikipedia](https://en.wikipedia.org/wiki/Beta-binomial_distribution)
 """
-immutable BetaBinomial <: DiscreteUnivariateDistribution
-    n::Int
-    α::Float64
-    β::Float64
 
-    function BetaBinomial(n::Real, α::Real, β::Real)
+immutable BetaBinomial{T <: Real} <: DiscreteUnivariateDistribution
+    n::Int
+    α::T
+    β::T
+
+    function BetaBinomial(n::Int, α::T, β::T)
         @check_args(BetaBinomial, n >= zero(n) && α >= zero(α) && β >= zero(β))
         new(n, α, β)
     end
 end
 
+BetaBinomial{T <: Real}(n::Int, α::T, β::T) = BetaBinomial{T}(n, α, β)
+BetaBinomial(n::Int, α::Real, β::Real) = BetaBinomial(n, promote(α, β)...)
+BetaBinomial(n::Int, α::Integer, β::Integer) = BetaBinomial(n, Float64(α), Float64(β))
+
 @distr_support BetaBinomial 0 d.n
 insupport(d::BetaBinomial, x::Real) = 0 <= x <= d.n
+
+#### Conversions
+function convert{T <: Real, S <: Real}(::Type{BetaBinomial{T}}, n::Int, α::S, β::S)
+    BetaBinomial(n, T(α), T(β))
+end
+function convert{T <: Real, S <: Real}(::Type{BetaBinomial{T}}, d::BetaBinomial{S})
+    BetaBinomial(d.n, T(d.α), T(d.β))
+end
 
 #### Parameters
 
@@ -84,7 +97,7 @@ end
 
 entropy(d::BetaBinomial) = entropy(Categorical(pdf(d)))
 median(d::BetaBinomial) = median(Categorical(pdf(d))) - 1
-mode(d::BetaBinomial) = indmax(pdf(d)) - 1
+mode{T <: Real}(d::BetaBinomial{T}) = indmax(pdf(d)) - one(T)
 modes(d::BetaBinomial) = [x - 1 for x in modes(Categorical(pdf(d)))]
 
 quantile(d::BetaBinomial, p::Float64) = quantile(Categorical(pdf(d)), p) - 1

@@ -24,19 +24,32 @@ External links
 * [Beta distribution on Wikipedia](http://en.wikipedia.org/wiki/Beta_distribution)
 
 """
-immutable Beta <: ContinuousUnivariateDistribution
-    α::Float64
-    β::Float64
 
-    function Beta(α::Real, β::Real)
+immutable Beta{T <: Real} <: ContinuousUnivariateDistribution
+    α::T
+    β::T
+
+    function Beta(α::T, β::T)
         @check_args(Beta, α > zero(α) && β > zero(β))
         new(α, β)
     end
-    Beta(α::Real) = Beta(α, α)
-    Beta() = new(1.0, 1.0)
 end
 
+Beta{T <: Real}(α::T, β::T) = Beta{T}(α, β)
+Beta(α::Real, β::Real) = Beta(promote(α, β)...)
+Beta(α::Integer, β::Integer) = Beta(Float64(α), Float64(β))
+Beta(α::Real) = Beta(α, α)
+Beta() = Beta(1.0, 1.0)
+
 @distr_support Beta 0.0 1.0
+
+#### Conversions
+function convert{T <: Real}(::Type{Beta{T}}, α::Real, β::Real)
+    Beta(T(α), T(β))
+end
+function convert{T <: Real, S <: Real}(::Type{Beta{T}}, d::Beta{S})
+    Beta(T(d.α), T(d.β))
+end
 
 #### Parameters
 
@@ -69,7 +82,7 @@ stdlogx(d::Beta) = sqrt(varlogx(d))
 function skewness(d::Beta)
     (α, β) = params(d)
     if α == β
-        return 0.0
+        return zero(α)
     else
         s = α + β
         (2.0 * (β - α) * sqrt(s + 1.0)) / ((s + 2.0) * sqrt(α * β))
@@ -95,8 +108,8 @@ end
 
 @_delegate_statsfuns Beta beta α β
 
-gradlogpdf(d::Beta, x::Float64) =
-    ((α, β) = params(d); 0.0 <= x <= 1.0 ? (α - 1.0) / x - (β - 1.0) / (1 - x) : 0.0)
+gradlogpdf{T <: Real}(d::Beta{T}, x::Real) =
+    ((α, β) = params(d); 0.0 <= x <= 1.0 ? (α - 1.0) / x - (β - 1.0) / (1 - x) : zero(T))
 
 
 #### Sampling

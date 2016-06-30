@@ -1,34 +1,26 @@
 doc"""
     Categorical(p)
-
 A *Categorical distribution* is parameterized by a probability vector `p` (of length `K`).
-
 $P(X = k) = p[k]  \quad \text{for } k = 1, 2, \ldots, K.$
-
 ```julia
 Categorical(p)   # Categorical distribution with probability vector p
-
 params(d)        # Get the parameters, i.e. (p,)
 probs(d)         # Get the probability vector, i.e. p
 ncategories(d)   # Get the number of categories, i.e. K
 ```
-
 Here, `p` must be a real vector, of which all components are nonnegative and sum to one.
-
 **Note:** The input vector `p` is directly used as a field of the constructed distribution, without being copied.
-
 External links:
-
 * [Categorical distribution on Wikipedia](http://en.wikipedia.org/wiki/Categorical_distribution)
-
 """
-immutable Categorical <: DiscreteUnivariateDistribution
+
+immutable Categorical{T <: Real} <: DiscreteUnivariateDistribution
     K::Int
-    p::Vector{Float64}
+    p::Vector{T}
 
-    Categorical(p::Vector{Float64}, ::NoArgCheck) = new(length(p), p)
+    Categorical(p::Vector{T}, ::NoArgCheck) = new(length(p), p)
 
-    function Categorical(p::Vector{Float64})
+    function Categorical(p::Vector{T})
         @check_args(Categorical, isprobvec(p))
         new(length(p), p)
     end
@@ -39,8 +31,22 @@ immutable Categorical <: DiscreteUnivariateDistribution
     end
 end
 
+Categorical{T <: Real}(p::Vector{T}, ::NoArgCheck) = Categorical{T}(p, NoArgCheck())
+Categorical{T <: Integer}(p::Vector{T}, ::NoArgCheck) = Categorical(Vector{Float64}(p), NoArgCheck())
+Categorical{T <: Real}(p::Vector{T}) = Categorical{T}(p)
+Categorical{T <: Integer}(p::Vector{T}) = Categorical(Vector{Float64}(p))
+Categorical(k::Integer) = Categorical{Float64}(k)
+
 @distr_support Categorical 1 d.K
 
+### Conversions
+
+function Categorical{T <: Real, S <: Real}(::Type{Categorical{T}}, p::Vector{S})
+    Categorical(Vector{T}(p))
+end
+function Categorical{T <: Real, S <: Real}(::Type{Categorical{T}}, d::Categorical{S})
+    Categorical(Vector{T}(d.p))
+end
 
 ### Parameters
 
@@ -51,9 +57,9 @@ params(d::Categorical) = (d.p,)
 
 ### Statistics
 
-function categorical_mean(p::AbstractArray{Float64})
+function categorical_mean{T <: Real}(p::AbstractArray{T})
     k = length(p)
-    s = 0.
+    s = zero(T)
     for i = 1:k
         @inbounds s += p[i] * i
     end
@@ -74,11 +80,11 @@ function median(d::Categorical)
     i
 end
 
-function var(d::Categorical)
+function var{T <: Real}(d::Categorical{T})
     k = ncategories(d)
     p = probs(d)
     m = categorical_mean(p)
-    s = 0.0
+    s = zero(T)
     for i = 1 : k
         @inbounds s += abs2(i - m) * p[i]
     end
@@ -110,20 +116,20 @@ end
 
 entropy(d::Categorical) = entropy(d.p)
 
-function mgf(d::Categorical, t::Real)
+function mgf{T <: Real}(d::Categorical{T}, t::Real)
     k = ncategories(d)
     p = probs(d)
-    s = 0.0
+    s = zero(T)
     for i = 1 : k
         @inbounds s += p[i] * exp(t)
     end
     s
 end
 
-function cf(d::Categorical, t::Real)
+function cf{T <: Real}(d::Categorical{T}, t::Real)
     k = ncategories(d)
     p = probs(d)
-    s = 0.0 + 0.0im
+    s = zero(T) + zero(T)*im
     for i = 1:k
         @inbounds s += p[i] * cis(t)
     end
@@ -160,7 +166,7 @@ function cdf(d::Categorical, x::Int)
     return c
 end
 
-pdf(d::Categorical, x::Int) = insupport(d, x) ? d.p[x] : 0.0
+pdf{T <: Real}(d::Categorical{T}, x::Int) = insupport(d, x) ? d.p[x] : zero(T)
 
 logpdf(d::Categorical, x::Int) = insupport(d, x) ? log(d.p[x]) : -Inf
 

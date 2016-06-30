@@ -21,17 +21,28 @@ External links
 * [Logistic distribution on Wikipedia](http://en.wikipedia.org/wiki/Logistic_distribution)
 
 """
-immutable Logistic <: ContinuousUnivariateDistribution
-    μ::Float64
-    θ::Float64
 
-    Logistic(μ::Real, θ::Real) = (@check_args(Logistic, θ > zero(θ)); new(μ, θ))
-    Logistic(μ::Real) = new(μ, 1.0)
-    Logistic() = new(0.0, 1.0)
+immutable Logistic{T <: Real} <: ContinuousUnivariateDistribution
+    μ::T
+    θ::T
+
+    Logistic(μ::T, θ::T) = (@check_args(Logistic, θ > zero(θ)); new(μ, θ))
 end
+
+Logistic{T <: Real}(μ::T, θ::T) = Logistic{T}(μ, θ)
+Logistic(μ::Real, θ::Real) = Logistic(promote(μ, θ)...)
+Logistic(μ::Real) = Logistic(μ, 1.0)
+Logistic() = Logistic(0.0, 1.0)
 
 @distr_support Logistic -Inf Inf
 
+#### Conversions
+function convert{T <: Real, S <: Real}(::Type{Logistic{T}}, μ::S, θ::S)
+    Logistic(T(μ), T(θ))
+end
+function convert{T <: Real, S <: Real}(::Type{Logistic{T}}, d::Logistic{S})
+    Logistic(T(d.μ), T(d.θ))
+end
 
 #### Parameters
 
@@ -49,31 +60,31 @@ mode(d::Logistic) = d.μ
 
 std(d::Logistic) = π * d.θ / sqrt3
 var(d::Logistic) = (π * d.θ)^2 / 3.0
-skewness(d::Logistic) = 0.0
-kurtosis(d::Logistic) = 1.2
+skewness{T <: Real}(d::Logistic{T}) = zero(T)
+kurtosis{T <: Real}(d::Logistic{T}) = 1.2*one(T)
 
 entropy(d::Logistic) = log(d.θ) + 2.0
 
 
 #### Evaluation
 
-zval(d::Logistic, x::Float64) = (x - d.μ) / d.θ
-xval(d::Logistic, z::Float64) = d.μ + z * d.θ
+zval(d::Logistic, x::Real) = (x - d.μ) / d.θ
+xval(d::Logistic, z::Real) = d.μ + z * d.θ
 
-pdf(d::Logistic, x::Float64) = (e = exp(-zval(d, x)); e / (d.θ * (1.0 + e)^2))
-logpdf(d::Logistic, x::Float64) = (u = -abs(zval(d, x)); u - 2.0 * log1pexp(u) - log(d.θ))
+pdf(d::Logistic, x::Real) = (e = exp(-zval(d, x)); e / (d.θ * (1.0 + e)^2))
+logpdf(d::Logistic, x::Real) = (u = -abs(zval(d, x)); u - 2.0 * log1pexp(u) - log(d.θ))
 
-cdf(d::Logistic, x::Float64) = logistic(zval(d, x))
-ccdf(d::Logistic, x::Float64) = logistic(-zval(d, x))
-logcdf(d::Logistic, x::Float64) = -log1pexp(-zval(d, x))
-logccdf(d::Logistic, x::Float64) = -log1pexp(zval(d, x))
+cdf(d::Logistic, x::Real) = logistic(zval(d, x))
+ccdf(d::Logistic, x::Real) = logistic(-zval(d, x))
+logcdf(d::Logistic, x::Real) = -log1pexp(-zval(d, x))
+logccdf(d::Logistic, x::Real) = -log1pexp(zval(d, x))
 
-quantile(d::Logistic, p::Float64) = xval(d, logit(p))
-cquantile(d::Logistic, p::Float64) = xval(d, -logit(p))
-invlogcdf(d::Logistic, lp::Float64) = xval(d, -logexpm1(-lp))
-invlogccdf(d::Logistic, lp::Float64) = xval(d, logexpm1(-lp))
+quantile(d::Logistic, p::Real) = xval(d, logit(p))
+cquantile(d::Logistic, p::Real) = xval(d, -logit(p))
+invlogcdf(d::Logistic, lp::Real) = xval(d, -logexpm1(-lp))
+invlogccdf(d::Logistic, lp::Real) = xval(d, logexpm1(-lp))
 
-function gradlogpdf(d::Logistic, x::Float64)
+function gradlogpdf(d::Logistic, x::Real)
     e = exp(-zval(d, x))
     ((2.0 * e) / (1.0 + e) - 1.0) / d.θ
 end
