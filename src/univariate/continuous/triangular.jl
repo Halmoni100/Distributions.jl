@@ -131,7 +131,7 @@ end
 function cf{T<:Real}(d::TriangularDist{T}, t::Real)
     # Is this correct?
     if t == zero(t)
-        return Complex{one(T)}
+        return one(Complex{T})
     else
         (a, b, c) = params(d)
         u = (b - c) * cis(a * t) - (b - a) * cis(c * t) + (c - a) * cis(b * t)
